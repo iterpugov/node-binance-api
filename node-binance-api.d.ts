@@ -44,10 +44,11 @@ declare module "node-binance-api" {
          * @param {function} execution_callback - optional execution callback
          * @param {function} subscribed_callback - subscription callback
          * @param {function} list_status_callback - status callback
+         * @param {function} closed_callback - status callback
          * @return {undefined}
          */
-        userMarginData(callback: _callback, execution_callback: _callback, subscribed_callback: _callback, list_status_callback: _callback): any;
-        userMarginData(...args: any): any;
+        userMarginData(callback: _callback, execution_callback: _callback, subscribed_callback: _callback, list_status_callback: _callback | false, closed_callback: _callback): any;
+        // userMarginData(...args: any): any;
 
         /**
          * Future Userdata websockets function
@@ -111,6 +112,9 @@ declare module "node-binance-api" {
          * Websocket depth chart
          * @param {array/string} symbols - an array or string of symbols to query
          * @param {function} callback - callback function
+         * @param {number} limit - depth limit
+         * @param {function} subscribe_callback - subscribe_callback function
+         * @param {function} close_callback - close_callback function
          * @return {string} the websocket endpoint
          */
         depthCache(symbols: _symbol[] | _symbol, ): any;
