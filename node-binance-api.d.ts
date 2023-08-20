@@ -213,6 +213,7 @@ declare module "node-binance-api" {
         test: boolean;
         hedgeMode: boolean;
         log: (...args: any[]) => void;
+        debugLog: (...args: any[]) => void;
         verbose: boolean;
         keepAlive: boolean;
         localAddress: boolean;

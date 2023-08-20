@@ -72,6 +72,9 @@ let api = function Binance(options = {}) {
     log: function (...args) {
       console.log(Array.prototype.slice.call(args));
     },
+    logError: function (...args) {
+      console.log(Array.prototype.slice.call(args));
+    },
   };
   Binance.options = default_options;
   Binance.info = {
@@ -106,6 +109,8 @@ let api = function Binance(options = {}) {
       Binance.options.hedgeMode = default_options.hedgeMode;
     if (typeof Binance.options.log === "undefined")
       Binance.options.log = default_options.log;
+    if (typeof Binance.options.logError === "undefined")
+      Binance.options.logError = default_options.logError;
     if (typeof Binance.options.verbose === "undefined")
       Binance.options.verbose = default_options.verbose;
     if (typeof Binance.options.keepAlive === "undefined")
@@ -456,7 +461,7 @@ let api = function Binance(options = {}) {
       (error, response) => {
         if (!response) {
           if (callback) callback(error, response);
-          else Binance.options.log("Order() error:", error);
+          else Binance.options.logError("Order() error:", error);
           return;
         }
         if (
@@ -544,7 +549,7 @@ let api = function Binance(options = {}) {
       function (error, response) {
         if (!response) {
           if (callback) callback(error, response);
-          else Binance.options.log("Order() error:", error);
+          else Binance.options.logError("Order() error:", error);
           return;
         }
         if (
@@ -873,14 +878,14 @@ let api = function Binance(options = {}) {
         ws = new WebSocket(stream + endpoint);
       }
     } catch (e) {
-      Binance.options.log("Error creating socket " + endpoint, e);
+      Binance.options.logError("Error creating socket " + endpoint, e);
       if (reconnect) {
         setTimeout(reconnect, 2000);
         return;
       }
     }
 
-    if (Binance.options.verbose)
+    // if (Binance.options.verbose)
       Binance.options.log("Subscribed to " + endpoint);
     ws.reconnect = Binance.options.reconnect;
     ws.endpoint = endpoint;
@@ -894,7 +899,7 @@ let api = function Binance(options = {}) {
       handleSocketHeartbeat.call(ws);
     });
     ws.on("error", (e) => {
-      Binance.options.log("ws.error ", endpoint, e);
+      Binance.options.logError("ws.error ", endpoint, e);
       handleSocketError.call(ws, e);
     });
     ws.on("close", (code, reason) => {
@@ -905,7 +910,7 @@ let api = function Binance(options = {}) {
       try {
         callback(JSON.parse(data));
       } catch (error) {
-        Binance.options.log("Parse error: " + error.message);
+        Binance.options.logError("Parse error: " + error.message);
       }
     });
     return ws;
@@ -967,7 +972,7 @@ let api = function Binance(options = {}) {
       try {
         callback(JSON.parse(data).data);
       } catch (error) {
-        Binance.options.log("CombinedStream: Parse error: " + error.message);
+        Binance.options.logError("CombinedStream: Parse error: " + error.message);
       }
     });
     return ws;
@@ -1219,7 +1224,7 @@ let api = function Binance(options = {}) {
       try {
         callback(JSON.parse(data).data);
       } catch (error) {
-        Binance.options.log(`futuresSubscribe: Parse error: ${error.message}`);
+        Binance.options.logError(`futuresSubscribe: Parse error: ${error.message}`);
       }
     });
     return ws;
@@ -2028,7 +2033,7 @@ let api = function Binance(options = {}) {
       try {
         callback(JSON.parse(data).data);
       } catch (error) {
-        Binance.options.log(`deliverySubscribe: Parse error: ${error.message}`);
+        Binance.options.logError(`deliverySubscribe: Parse error: ${error.message}`);
       }
     });
     return ws;
@@ -2489,7 +2494,7 @@ let api = function Binance(options = {}) {
     } else if (type === "outboundAccountPosition" || type === "balanceUpdate") {
       Binance.options.balance_callback(data);
     } else {
-      Binance.options.log("Unexpected userData: " + type);
+      Binance.options.logError("Unexpected userData: " + type);
     }
   };
 
@@ -2511,7 +2516,7 @@ let api = function Binance(options = {}) {
     } else if (type === "outboundAccountPosition" || type === "balanceUpdate") {
       Binance.options.margin_balance_callback(data);
     } else {
-      Binance.options.log("Unexpected userMarginData: " + type);
+      Binance.options.logError("Unexpected userMarginData: " + type);
     }
   };
 
@@ -2545,7 +2550,7 @@ let api = function Binance(options = {}) {
         );
       }
     } else {
-      Binance.options.log("Unexpected userFutureData: " + type);
+      Binance.options.logError("Unexpected userFutureData: " + type);
     }
   };
 
@@ -2573,7 +2578,7 @@ let api = function Binance(options = {}) {
         );
       }
     } else {
-      Binance.options.log("Unexpected userDeliveryData: " + type);
+      Binance.options.logError("Unexpected userDeliveryData: " + type);
     }
   };
 
@@ -2783,7 +2788,7 @@ let api = function Binance(options = {}) {
     let balances = {};
     if (typeof data === "undefined") return {};
     if (typeof data.balances === "undefined") {
-      Binance.options.log("balanceData error", data);
+      Binance.options.logError("balanceData error", data);
       return {};
     }
     for (let obj of data.balances) {
@@ -7071,7 +7076,7 @@ let api = function Binance(options = {}) {
       ) {
         let reconnect = debounce(
           () => {
-            // Binance.options.log("depthCache.reconnect");
+            Binance.options.log("depthCache.reconnect");
 
             if (Binance.options.reconnect)
               depthCacheFunction(
@@ -7177,7 +7182,7 @@ let api = function Binance(options = {}) {
             reconnect,
             function onSubscribed() {
               //on open connect
-            //   Binance.options.log("depthCache.subscribeCombined", "subscribed");
+              Binance.options.log("depthCache.subscribeCombined", "subscribed");
               async.mapLimit(
                 symbols,
                 50,
@@ -7190,7 +7195,7 @@ let api = function Binance(options = {}) {
               subscribe_callback && subscribe_callback();
             },
             function onClose() {
-            //   Binance.options.log("depthCache.subscribeCombined", "on_close");
+              Binance.options.log("depthCache.subscribeCombined", "on_close");
               close_callback();
             }
           );
@@ -7206,7 +7211,7 @@ let api = function Binance(options = {}) {
             reconnect,
             function onSubscribed() {
               //on connect
-            //   Binance.options.log("depthCache.subscribe", "subscribed");
+              Binance.options.log("depthCache.subscribe", "subscribed");
               async.mapLimit(
                 [symbol],
                 1,
@@ -7219,7 +7224,7 @@ let api = function Binance(options = {}) {
               subscribe_callback && subscribe_callback();
             },
             function onClose() {
-            //   Binance.options.log("depthCache.subscribeCombined", "on_close");
+              Binance.options.log("depthCache.subscribeCombined", "on_close");
               close_callback();
             }
           );
