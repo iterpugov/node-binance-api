@@ -1,5 +1,5 @@
 /* ============================================================
- * node-binance-api
+ * node-binance-api 111
  * https://github.com/jaggedsoft/node-binance-api
  * ============================================================
  * Copyright 2017-, Jon Eyrick
@@ -4137,6 +4137,31 @@ let api = function Binance(options = {}) {
         });
       } else {
         signedRequest(sapi + "v1/capital/withdraw/history", params, callback);
+      }
+    },
+
+     /**
+     * Get the Withdraws history for a given asset
+     * @param {function} callback - the callback function
+     * @param {object} params - supports limit and fromId parameters
+     * @return {promise or undefined} - omitting the callback returns a promise
+     */
+     depositAddresses: function (callback, params = {}) {
+      // https://binance-docs.github.io/apidocs/spot/en/#all-coins-39-information-user_data
+      if (typeof params === "string") params = { coin: params };
+      if (!callback) {
+        return new Promise((resolve, reject) => {
+          callback = (error, response) => {
+            if (error) {
+              reject(error);
+            } else {
+              resolve(response);
+            }
+          };
+            signedRequest(sapi + "v1/capital/deposit/address", params, callback);
+        });
+      } else {
+        signedRequest(sapi + "v1/capital/deposit/address", params, callback);
       }
     },
 
