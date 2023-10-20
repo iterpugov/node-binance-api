@@ -4093,13 +4093,16 @@ let api = function Binance(options = {}) {
       asset,
       address,
       amount,
+      chain = false,
       addressTag = false,
       callback = false,
       name = false
     ) {
-      let params = { asset, address, amount };
+      let params = { coin: asset, address, amount, walletType: 1 };
       if (name) params.name = name;
-      if (addressTag) params.addressTag = addressTag;
+      if (addressTag !== false) params.addressTag = addressTag;
+      if (chain) params.network = chain;
+
       if (!callback) {
         return new Promise((resolve, reject) => {
           callback = (error, response) => {
@@ -4109,11 +4112,25 @@ let api = function Binance(options = {}) {
               resolve(response);
             }
           };
-          signedRequest(wapi + "v3/withdraw.html", params, callback, "POST");
+          signedRequest(sapi + "v1/capital/withdraw/apply", params, callback, "POST");
         });
       } else {
-        signedRequest(wapi + "v3/withdraw.html", params, callback, "POST");
+        signedRequest(sapi + "v1/capital/withdraw/apply", params, callback, "POST");
       }
+    },
+
+    allCoinsInfo(){
+      let params = {}
+      return new Promise((resolve, reject) => {
+        callback = (error, response) => {
+          if (error) {
+            reject(error);
+          } else {
+            resolve(response);
+          }
+        };
+        signedRequest(sapi + "v1/capital/config/getall", params, callback, "GET");
+      });
     },
 
     /**

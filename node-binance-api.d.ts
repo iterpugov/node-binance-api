@@ -650,8 +650,10 @@ declare module "node-binance-api" {
         * @param {string} name - the name to save the address as. Set falsy to prevent Binance saving to address book
         * @return {promise or undefined} - omitting the callback returns a promise
         */
-        withdraw(asset: string, address: string, amount: number, addressTag?: string, callback?: _callback, name?: string): Promise<any>;
+        withdraw(asset: string, address: string, amount: number, chain: string, addressTag?: string, callback?: _callback, name?: string): Promise<any>;
         withdraw(...args: any): any;
+
+        allCoinsInfo(): Promise<any>;
 
         /**
         * Get the Withdraws history for a given asset
