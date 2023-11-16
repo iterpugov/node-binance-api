@@ -58,6 +58,7 @@ let api = function Binance(options = {}) {
   Binance.ohlcLatest = {};
   Binance.klineQueue = {};
   Binance.ohlc = {};
+  Binance.depthEventsLogger = /*(type, symbol, data) => void | Promise<void> = */() => {};
 
   const default_options = {
     recvWindow: 5000,
@@ -97,6 +98,8 @@ let api = function Binance(options = {}) {
       // Pass json config filename
       Binance.options = JSON.parse(file.readFileSync(opt));
     } else Binance.options = opt;
+
+
     if (typeof Binance.options.recvWindow === "undefined")
       Binance.options.recvWindow = default_options.recvWindow;
     if (typeof Binance.options.useServerTime === "undefined")
@@ -142,6 +145,7 @@ let api = function Binance(options = {}) {
       if (typeof urls.dstreamSingleTest === "string")
         dstreamSingleTest = urls.dstreamSingleTest;
     }
+
     if (Binance.options.useServerTime) {
       publicRequest(base + "v3/time", {}, function (error, response) {
         Binance.info.timeOffset = response.serverTime - new Date().getTime();
@@ -2505,6 +2509,7 @@ let api = function Binance(options = {}) {
    */
   const userMarginDataHandler = (data) => {
     let type = data.e;
+    // Binance.options.log("userMarginDataHandler: ",  data);
     if (type === "outboundAccountInfo") {
       // XXX: Deprecated in 2020-09-08
     } else if (type === "executionReport") {
@@ -3031,6 +3036,7 @@ let api = function Binance(options = {}) {
       obj;
     let context = Binance.depthCacheContext[symbol];
     let updateDepthCache = () => {
+      Binance.depthEventsLogger('DEPTH_EVENT', symbol, depth);
       Binance.depthCache[symbol].eventTime = depth.E;
       for (obj of depth.b) {
         //bids
@@ -3067,7 +3073,8 @@ let api = function Binance(options = {}) {
           '", got "' +
           depth.U +
           '"';
-        if (Binance.options.verbose) Binance.options.log(msg);
+        //if (Binance.options.verbose)
+        Binance.options.logError("!!!!!!!!", msg);
         throw new Error(msg);
       }
     } else if (depth.U > context.snapshotUpdateId + 1) {
@@ -3076,7 +3083,8 @@ let api = function Binance(options = {}) {
       let msg =
         "depthHandler: [" + symbol + "] The depth cache is out of sync.";
       msg += " Symptom: Gap between snapshot and first stream data.";
-      if (Binance.options.verbose) Binance.options.log(msg);
+      // if (Binance.options.verbose) Binance.options.log(msg);
+      Binance.options.logError("!!!!!!!!111", msg);
       throw new Error(msg);
     } else if (depth.u < context.snapshotUpdateId + 1) {
       /* In this case we've received data that we've already had since the snapshot.
@@ -4096,9 +4104,10 @@ let api = function Binance(options = {}) {
       chain = false,
       addressTag = false,
       callback = false,
-      name = false
+      name = false,
+      walletType = 1
     ) {
-      let params = { coin: asset, address, amount, walletType: 1 };
+      let params = { coin: asset, address, amount, walletType };
       if (name) params.name = name;
       if (addressTag !== false) params.addressTag = addressTag;
       if (chain) params.network = chain;
@@ -4324,6 +4333,28 @@ let api = function Binance(options = {}) {
         });
       } else {
         signedRequest(base + "v3/account", {}, callback);
+      }
+    },
+
+    /**
+     * Get the account
+     * @param {function} callback - the callback function
+     * @return {promise or undefined} - omitting the callback returns a promise
+     */
+    fundingAccount: function (callback) {
+      if (!callback) {
+        return new Promise((resolve, reject) => {
+          callback = (error, response) => {
+            if (error) {
+              reject(error);
+            } else {
+              resolve(response);
+            }
+          };
+          signedRequest(sapi + "v1/asset/get-funding-asset", {}, callback, "POST");
+        });
+      } else {
+        signedRequest(sapi + "v1/asset/get-funding-asset", {}, callback, "POST");
       }
     },
 
@@ -6829,6 +6860,7 @@ let api = function Binance(options = {}) {
           () => {
             // Binance.options.log("userMarginData.reconnect");
             if (Binance.options.reconnect)
+              clearTimeout(Binance.options.listenMarginKeepAliveTimer);
               userMarginData(
                 callback,
                 execution_callback,
@@ -6854,7 +6886,7 @@ let api = function Binance(options = {}) {
             }
 
             Binance.options.listenMarginKey = response.listenKey;
-            setTimeout(function userDataKeepAlive() {
+            Binance.options.listenMarginKeepAliveTimer = setTimeout(function userDataKeepAlive() {
               // keepalive
               try {
                 apiRequest(
@@ -6863,37 +6895,45 @@ let api = function Binance(options = {}) {
                     Binance.options.listenMarginKey,
                   {},
                   function (err) {
-                    if (err)
-                      setTimeout(userDataKeepAlive, 60000); // retry in 1 minute
-                    else setTimeout(userDataKeepAlive, 60 * 30 * 1000); // 30 minute keepalive
+                    Binance.options.log("userMarginData.keepalive", err)
+                    if (err) {
+                      Binance.options.listenMarginKeepAliveTimer = setTimeout(userDataKeepAlive, 60000); // retry in 1 minute
+                    }else {
+                      Binance.options.listenMarginKeepAliveTimer = setTimeout(userDataKeepAlive, 60 * 30 * 1000); // 30 minute keepalive
+                    }
                   },
                   "PUT"
                 );
               } catch (error) {
-                setTimeout(userDataKeepAlive, 60000); // retry in 1 minute
+                Binance.options.listenMarginKeepAliveTimer = setTimeout(userDataKeepAlive, 60000); // retry in 1 minute
               }
             }, 60 * 30 * 1000); // 30 minute keepalive
             Binance.options.margin_balance_callback = callback;
             Binance.options.margin_execution_callback = execution_callback;
             Binance.options.margin_list_status_callback = list_status_callback;
-            //const subscription =
-            subscribe(
+            const subscription = subscribe(
               Binance.options.listenMarginKey,
               userMarginDataHandler,
               reconnect,
               function onSubscribe() {
-                // Binance.options.log("userMarginData.subscribed");
+                Binance.options.log("userMarginData.subscribed");
                 subscribed_callback && subscribed_callback();
               },
               function onClose() {
-                // Binance.options.log("userMarginData.closed_callback");
+                Binance.options.log("userMarginData.closed_callback");
                 closed_callback && closed_callback();
               }
             );
+            Binance.options.listenMarginSubscription = subscription;
             // if ( subscribed_callback ) subscribed_callback( subscription.endpoint );
           },
           "POST"
         );
+      },
+
+      userMarginDataTerminate(){
+        clearTimeout(Binance.options.listenMarginKeepAliveTimer)
+        return terminate(Binance.options.listenMarginSubscription.endpoint, false)
       },
 
       /**
@@ -7119,6 +7159,7 @@ let api = function Binance(options = {}) {
         let reconnect = debounce(
           () => {
             Binance.options.log("depthCache.reconnect");
+            Binance.opetions.depthEventsLogger('DEPTH_CACHE_RECONNECT', "-", "-")
 
             if (Binance.options.reconnect)
               depthCacheFunction(
@@ -7157,8 +7198,10 @@ let api = function Binance(options = {}) {
             context.messageQueue.push(depth);
           } else {
             try {
+              Binance.options.depthEventsLogger('DEPTH_STREAM', symbol, depth);
               depthHandler(depth);
             } catch (err) {
+              Binance.options.logError("depthHandler2", err);
               return terminate(context.endpointId, true);
             }
             if (callback) callback(symbol, Binance.depthCache[symbol], context);
@@ -7170,9 +7213,12 @@ let api = function Binance(options = {}) {
             base + "v3/depth",
             { symbol: symbol, limit: limit },
             function (error, json) {
+              Binance.depthEventsLogger('DEPTH_SNAPSHOT', symbol, json)
               if (error) {
+                Binance.options.logError("depthCache 3:", error);
                 return cb(error, null);
               }
+              // Binance.options
               // Store symbol next use
               json.symb = symbol;
               cb(null, json);
@@ -7196,8 +7242,10 @@ let api = function Binance(options = {}) {
             /* Although sync errors shouldn't ever happen here, we catch and swallow them anyway
                          just in case. The stream handler function above will deal with broken caches. */
             try {
+              Binance.options.depthEventsLogger('DEPTH_QUEUE', symbol, depth);
               depthHandler(depth);
             } catch (err) {
+              Binance.options.logError("depthHandler1", err)  
               // Do nothing
             }
           }
@@ -7546,28 +7594,47 @@ let api = function Binance(options = {}) {
 
       /**
        * Spot WebSocket bookTicker (bid/ask quotes including price & amount)
-       * @param {symbol} symbol name or false. can also be a callback
+       * @param {symbol} symbols name or false. can also be a callback
        * @param {function} callback - callback function
        * @return {string} the websocket endpoint
        */
       bookTickers: function bookTickerStream(
-        symbol = false,
-        callback = console.log
+        symbols = [],
+        callback = console.log,
+        subscribe_callback,
+        close_callback
       ) {
-        if (typeof symbol == "function") {
-          callback = symbol;
-          symbol = false;
-        }
+        // if (typeof symbols === "string") {
+          // symbols = [symbols];
+        // }
         let reconnect = () => {
-          if (Binance.options.reconnect) bookTickerStream(symbol, callback);
+          if (Binance.options.reconnect) bookTickerStream(symbols, callback, subscribe_callback, close_callback);
         };
-        const endpoint = symbol
-          ? `${symbol.toLowerCase()}@bookTicker`
-          : "!bookTicker";
-        let subscription = subscribe(
-          endpoint,
+        // const endpoint = symbols.map(s => `${s.toLowerCase()}@bookTicker`).join("/");
+          
+        // let subscription = subscribe(
+        //   endpoint,
+        //   (data) => callback(fBookTickerConvertData(data)),
+        //   reconnect
+        // );
+        // return subscription.endpoint;
+
+        let streams = symbols.map(s => `${s.toLowerCase()}@bookTicker`);
+
+        subscription = subscribeCombined(
+          streams,
           (data) => callback(fBookTickerConvertData(data)),
-          reconnect
+          reconnect,
+          function onSubscribed() {
+            //on open connect
+            Binance.options.log("bookTickers.subscribeCombined", "subscribed");
+
+            subscribe_callback && subscribe_callback();
+          },
+          function onClose() {
+            Binance.options.log("bookTickers.subscribeCombined", "on_close");
+            close_callback && close_callback();
+          }
         );
         return subscription.endpoint;
       },

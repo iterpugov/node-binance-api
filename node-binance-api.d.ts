@@ -50,6 +50,8 @@ declare module "node-binance-api" {
         userMarginData(callback: _callback, execution_callback: _callback, subscribed_callback: _callback, list_status_callback: _callback | false, closed_callback: _callback): any;
         // userMarginData(...args: any): any;
 
+        userMarginDataTerminate(): any;
+
         /**
          * Future Userdata websockets function
          * @param {function} margin_call_callback
@@ -192,7 +194,7 @@ declare module "node-binance-api" {
          * @param {function} callback - callback function
          * @return {string} the websocket endpoint
          */
-        bookTickers(symbol: _symbol, callback: _callback): string;
+        bookTickers(symbol: _symbol | _symbol[], callback: _callback, subscribe_callback: _callback, close_callback: _callback): string;
         bookTickers(...args: any): any;
 
         /**
@@ -650,7 +652,7 @@ declare module "node-binance-api" {
         * @param {string} name - the name to save the address as. Set falsy to prevent Binance saving to address book
         * @return {promise or undefined} - omitting the callback returns a promise
         */
-        withdraw(asset: string, address: string, amount: number, chain: string, addressTag?: string, callback?: _callback, name?: string): Promise<any>;
+        withdraw(asset: string, address: string, amount: number, chain: string, addressTag?: string, callback?: _callback, name?: string, walletType?: number): Promise<any>;
         withdraw(...args: any): any;
 
         allCoinsInfo(): Promise<any>;
@@ -1365,6 +1367,9 @@ declare module "node-binance-api" {
         mgAccount(callback: _callback, isIsolated?: boolean): any;
         mgAccount(...args: any): any;
 
+        
+        fundingAccount(callback: _callback, isIsolated?: boolean): any;
+        fundingAccount(...args: any): any;
         /**
          * Get maximum borrow amount of an asset
          * @param {string} asset - the asset
